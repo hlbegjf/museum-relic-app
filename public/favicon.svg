@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <rect x="4" y="4" width="92" height="92" rx="18" fill="#C8394B"/>
+  <rect x="9" y="9" width="82" height="82" rx="14" fill="none" stroke="#F7F2E7" stroke-width="2.5" opacity="0.85"/>
+  <text x="50" y="68" font-size="52" text-anchor="middle" fill="#F7F2E7" font-family="Kaiti SC, STKaiti, serif" font-weight="bold">缘</text>
+</svg>
