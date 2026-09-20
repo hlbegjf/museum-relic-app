@@ -23,7 +23,18 @@ jobs:
         with:
           node-version: 24
           cache: npm
-      - run: npm ci
+      - name: npm ci
+        run: |
+          set -o pipefail
+          npm ci 2>&1 | tee /tmp/npmci.log || {
+            {
+              echo "## npm ci FAILED"
+              echo '```'
+              tail -40 /tmp/npmci.log
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          }
       - name: Diagnose environment
         run: |
           {
@@ -35,7 +46,18 @@ jobs:
             echo "- node_modules/react: $(test -d node_modules/react && echo EXISTS || echo MISSING)"
             echo "- node_modules/@types/react: $(test -d node_modules/@types/react && echo EXISTS || echo MISSING)"
           } >> "$GITHUB_STEP_SUMMARY"
-      - run: npm run build
+      - name: npm run build
+        run: |
+          set -o pipefail
+          npm run build 2>&1 | tee /tmp/build.log || {
+            {
+              echo "## npm run build FAILED"
+              echo '```'
+              tail -60 /tmp/build.log
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          }
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
