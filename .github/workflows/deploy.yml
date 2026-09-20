@@ -18,12 +18,23 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
       - run: npm ci
+      - name: Diagnose environment
+        run: |
+          {
+            echo "## CI Environment Diagnostics"
+            echo "- node: $(node -v)"
+            echo "- npm: $(npm -v)"
+            echo "- tsc: $(./node_modules/.bin/tsc --version)"
+            echo "- typescript package: $(node -p "require('typescript/package.json').version" 2>&1)"
+            echo "- node_modules/react: $(test -d node_modules/react && echo EXISTS || echo MISSING)"
+            echo "- node_modules/@types/react: $(test -d node_modules/@types/react && echo EXISTS || echo MISSING)"
+          } >> "$GITHUB_STEP_SUMMARY"
       - run: npm run build
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
