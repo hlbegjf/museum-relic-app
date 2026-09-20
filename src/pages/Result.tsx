@@ -7,7 +7,8 @@ import ArtifactSeal from '@/components/ArtifactSeal';
 import SealButton from '@/components/SealButton';
 import { generateShareCard } from '@/components/ShareCard';
 import { MUSEUM_BY_ID } from '@/data/museums';
-import { matchCurated, matchDivined } from '@/engine/engine';
+import { matchCurated } from '@/engine/engine';
+import { matchLive, type LiveMatch } from '@/engine/wikidata';
 import { useFateStore } from '@/store/fate';
 
 export default function Result() {
@@ -23,12 +24,56 @@ export default function Result() {
   const customName =
     pendingCustom && pendingCustom.key === museumKey ? pendingCustom.name : null;
 
+  /* ── 任意馆：Wikidata 真实馆藏推演（异步） ───────────── */
+  const [liveResult, setLiveResult] = useState<LiveMatch | null>(null);
+  const [livePhase, setLivePhase] = useState<'idle' | 'loading' | 'done'>('idle');
+  /** 长等待（慢模式兜底时可达 20 秒+）切换文案，让用户知道仍在推进 */
+  const [slowWait, setSlowWait] = useState(false);
+
+  const existingRecord = useMemo(
+    () => collection.find((r) => r.museumKey === museumKey),
+    [collection, museumKey],
+  );
+  const existingSnapshot = existingRecord?.artifactSnapshot;
+
+  useEffect(() => {
+    if (!profile || builtIn || !customName) return;
+    // 初遇已盖章 → 用快照重现当时的相遇，不再查询
+    if (existingSnapshot) {
+      setLiveResult({
+        match: {
+          artifact: existingSnapshot,
+          affinity: existingRecord.affinity,
+          divined: true,
+        },
+        live: existingSnapshot.live === true,
+        museumQid: null,
+      });
+      setLivePhase('done');
+      return;
+    }
+    let cancelled = false;
+    setLivePhase('loading');
+    setSlowWait(false);
+    setLiveResult(null);
+    const slowTimer = setTimeout(() => !cancelled && setSlowWait(true), 9000);
+    matchLive(profile, customName).then((res) => {
+      if (cancelled) return;
+      setLiveResult(res);
+      setLivePhase('done');
+    });
+    return () => {
+      cancelled = true;
+      clearTimeout(slowTimer);
+    };
+  }, [profile, builtIn, customName, existingSnapshot, existingRecord?.affinity]);
+
   const match = useMemo(() => {
     if (!profile) return null;
     if (builtIn) return matchCurated(profile, builtIn.id);
-    if (customName) return matchDivined(profile, customName);
+    if (customName && livePhase === 'done' && liveResult) return liveResult.match;
     return null;
-  }, [profile, builtIn, customName]);
+  }, [profile, builtIn, customName, livePhase, liveResult]);
 
   const museumName = builtIn ? builtIn.name : customName ?? '';
 
@@ -63,11 +108,34 @@ export default function Result() {
       affinity: match.affinity,
       timestamp: Date.now(),
       divined: match.divined,
+      artifactSnapshot: match.artifact,
     });
   }, [awakening, match, museumName, museumKey, addRecord]);
 
   if (!profile) return <Navigate to="/quiz" replace />;
-  if (!match) return <Navigate to="/museum" replace />;
+  if (!match) {
+    // 任意馆推演中（含首帧 idle）：显示过渡页而非跳走
+    if (customName && livePhase !== 'done') {
+      return (
+        <div className="paper-bg flex min-h-screen flex-col items-center justify-center">
+          <div className="relative flex items-center justify-center">
+            <div className="absolute h-40 w-40 animate-glow-pulse rounded-full bg-tungsten/30 blur-2xl" />
+            <span className="seal relative h-24 w-24 animate-spin-slow rounded-2xl text-5xl">
+              缘
+            </span>
+          </div>
+          <p className="mt-10 animate-pulse font-display text-2xl tracking-[0.3em] text-ink">
+            正在推演缘分
+          </p>
+          <p className="mt-3 text-xs tracking-[0.4em] text-inkSoft">{museumName}</p>
+          <p className="mt-2 text-[10px] tracking-wider text-inkSoft/60">
+            {slowWait ? '馆藏档案深且长，仍在细细翻检…' : '查询这座馆的真实馆藏中…'}
+          </p>
+        </div>
+      );
+    }
+    return <Navigate to="/museum" replace />;
+  }
 
   const { artifact, affinity, divined } = match;
 
@@ -98,9 +166,15 @@ export default function Result() {
           <div className="flex items-center gap-2 rounded-full border border-gold/60 bg-paper/80 px-4 py-1.5 text-xs text-inkSoft">
             <Landmark size={13} />
             <span>
-              {museumName} · {divined ? '缘分推演' : '专属策展'}
+              {museumName} ·{' '}
+              {builtIn ? '专属策展' : artifact.live ? '真实馆藏推演' : '世界文物推演'}
             </span>
           </div>
+          {divined && !artifact.live && (
+            <p className="mt-2 text-center text-[10px] leading-4 text-inkSoft/70">
+              该馆馆藏暂未收录 · 已为你推演世界文物之缘
+            </p>
+          )}
         </div>
 
         {/* 文物头图区 */}

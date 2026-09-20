@@ -110,6 +110,8 @@ export function commonsUrl(filename: string, width = 800): string {
 
 /** 文物实物图 URL；缺图返回 null（调用方回退为印章） */
 export function artifactImage(artifact: Artifact, width = 800): string | null {
+  // Wikidata 实时推演的文物自带 Commons 文件名
+  if (artifact.imageUrl) return commonsUrl(artifact.imageUrl, width);
   const filename = ARTIFACT_IMAGES[artifact.id];
   return filename ? commonsUrl(filename, width) : null;
 }

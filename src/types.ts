@@ -24,6 +24,10 @@ export interface Artifact {
   message: string;
   /** 气质标签 */
   tags: string[];
+  /** Wikimedia Commons 实物图文件名（Wikidata 实时推演文物用） */
+  imageUrl?: string;
+  /** 是否为 Wikidata 实时推演的真实馆藏文物 */
+  live?: boolean;
 }
 
 export interface Museum {
@@ -57,6 +61,8 @@ export interface CollectionRecord {
   affinity: number;
   timestamp: number;
   divined: boolean;
+  /** 盖章时文物的完整快照（live 文物不在内置数据表中） */
+  artifactSnapshot?: Artifact;
 }
 
 export interface MatchResult {

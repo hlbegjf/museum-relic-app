@@ -118,7 +118,7 @@ export default function Collection() {
             </div>
             <div className="mt-4 space-y-3">
               {customRecords.map((r) => {
-                const artifact = ARTIFACT_BY_ID[r.artifactId];
+                const artifact = r.artifactSnapshot ?? ARTIFACT_BY_ID[r.artifactId];
                 if (!artifact) return null;
                 return (
                   <button
