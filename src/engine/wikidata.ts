@@ -26,6 +26,8 @@ export interface LiveCandidate {
   classes: string[];
   /** P571 创作时间（ISO，可缺省） */
   inception: string | undefined;
+  /** 知名度（标签语言数代理：知名展品有多语言标签，无名实体只有一两种） */
+  fame: number;
 }
 
 export interface LiveMatch {
@@ -141,11 +143,45 @@ const FAST_MODES = [
 ];
 /**
  * 慢模式：全表反查，实测 13-50 秒；仅在快模式无果时兜底，同样串行。
- * P276/P361* 的零跳路径已覆盖纯 P276，无需单独再查。
+ * 只保留语义强的直接属性；P361*（part of 传递闭包）曾把馆外实体
+ * 拉进候选（如洛阳博物馆误配"掷铁饼者"），已移除。
  */
 const SLOW_MODES = [
   '?item wdt:P127 wd:{qid} .', // owned by
-  '?item wdt:P276/wdt:P361* wd:{qid} .', // location（含分馆路径）
+  '?item wdt:P276 wd:{qid} .', // location
+];
+
+/**
+ * 排除的 P31 类别：不是可陈列展品的实体（照片/文献/人物/建筑/事件/零部件等）。
+ * 过滤在客户端完成（isExhibitable）——SPARQL 侧 FILTER NOT IN 会把大馆查询
+ * 的执行计划劣化到 20 秒以上。
+ */
+const EXCLUDED_CLASSES = [
+  'Q125191', // photograph 照片（文档性影像，非展品）
+  'Q7725634', // literary work 文学作品（概念实体）
+  'Q1190417', // baseball card 棒球卡
+  'Q1757923', // carte de visite 名片照片
+  'Q5', // human 人物
+  'Q15632617', // fictional human 虚构人物
+  'Q43229', // organization 组织机构
+  'Q33506', // museum 博物馆自身
+  'Q41176', // building 建筑
+  'Q811979', // architectural structure 建筑结构
+  'Q30036', // event 事件
+  'Q515', // city 城市
+  'Q15911314', // administrative territorial entity 行政区划
+  'Q3918', // university 大学
+  'Q13442814', // scholarly article 学术论文
+  'Q200266', // handle 器物把手（零部件）
+  'Q2488579', // lid 器盖（零部件）
+  'Q2745866', // shaft 轴（零部件）
+  'Q571', // book 书籍（馆藏文献，非展品）
+  'Q732577', // publication 出版物
+  'Q47461344', // written work 文字作品
+  'Q3331189', // version/edition/translation 版本卷次
+  'Q1002697', // periodical 期刊杂志
+  'Q11424', // film 电影
+  'Q5398426', // television series 电视剧
 ];
 
 /** 把 SPARQL Special:FilePath URL 解析为 Commons 文件名 */
@@ -163,14 +199,31 @@ function sparqlUrl(sparql: string): string {
   return `${SPARQL_API}?format=json&query=${encodeURIComponent(sparql)}`;
 }
 
+/** 把 SPARQL 实体 URI 归一化为裸 QID（http://www.wikidata.org/entity/Q123 → Q123） */
+export function qidFromUri(uri: string): string {
+  return uri.split('/').pop() ?? '';
+}
+
+/**
+ * 展品资格判定（纯函数，便于测试）：必须至少有一个 P31 类别，且任何类别
+ * 都不得命中黑名单（照片/文献/人物/建筑/零部件等非展品，命中即排除——
+ * 宁可漏选，不可错配）。
+ */
+export function isExhibitable(classes: string[]): boolean {
+  if (classes.length === 0) return false;
+  return !classes.some((q) => EXCLUDED_CLASSES.includes(q));
+}
+
 /**
  * 按单个属性模式查询馆藏候选（裸三元组，不含 label service——
  * label service 会把查询拖慢到 30 秒以上，label 改由 wbgetentities 批量补齐）。
+ * P31 用 OPTIONAL 保持轻量（必选 + FILTER 曾让执行计划劣化），黑名单过滤由 isExhibitable 客户端完成。
  */
 async function queryMode(qid: string, mode: string, timeout: number): Promise<LiveCandidate[]> {
   const where = mode.replace('{qid}', qid);
   const sparql = `SELECT ?item (SAMPLE(?img) AS ?image)
-    (GROUP_CONCAT(DISTINCT ?class; separator="|") AS ?classes) (SAMPLE(?date) AS ?inception) WHERE {
+    (GROUP_CONCAT(DISTINCT ?class; separator="|") AS ?classes)
+    (SAMPLE(?date) AS ?inception) WHERE {
     ${where}
     ?item wdt:P18 ?img .
     OPTIONAL { ?item wdt:P31 ?class . }
@@ -188,13 +241,20 @@ async function queryMode(qid: string, mode: string, timeout: number): Promise<Li
       const imageFile = fileNameFromFilePathUrl(row.image?.value ?? '');
       if (!q || !imageFile) continue;
       if (q === qid) continue; // 博物馆自身不算馆藏
+      // GROUP_CONCAT 的 ?class 是完整实体 URI，先归一化为裸 QID
+      const classes = (row.classes?.value ?? '')
+        .split('|')
+        .map((uri) => qidFromUri(uri))
+        .filter(Boolean);
+      if (!isExhibitable(classes)) continue; // 照片/文献/人物/建筑等非展品
       out.push({
         qid: q,
         name: '', // 由批量 label 查询补齐
         description: '',
         imageFile,
-        classes: (row.classes?.value ?? '').split('|').filter(Boolean),
+        classes,
         inception: row.inception?.value,
+        fame: 0, // 由 fetchLabels 按标签语言数填充
       });
     }
     return out;
@@ -206,9 +266,19 @@ async function queryMode(qid: string, mode: string, timeout: number): Promise<Li
 interface EntityLabels {
   label?: string;
   description?: string;
+  /** 返回标签的语言数（知名度代理） */
+  langCount?: number;
 }
 
-/** 批量取实体中文名（zh → zh-hans → en），每批 50 个并行 */
+/** 标签语言回退链：中文优先，其次英文，最后任一主要语言 */
+const LABEL_LANG_FALLBACK = ['zh', 'zh-hans', 'zh-hant', 'en', 'fr', 'ja', 'ko', 'de', 'ru', 'es', 'it', 'pt', 'ar', 'hi'];
+const LABEL_LANGS_PARAM = LABEL_LANG_FALLBACK.join('|');
+
+/**
+ * 批量取实体名称（zh → zh-hans → zh-hant → en → 其他主要语言）。
+ * 部分小语种馆藏在 Wikidata 仅有法语/日语等标签，全链回退保证不丢真实馆藏。
+ * 同时统计标签语言数作为知名度：知名展品往往有十几种语言标签。
+ */
 export async function fetchLabels(qids: string[]): Promise<Map<string, EntityLabels>> {
   const out = new Map<string, EntityLabels>();
   const batches: string[][] = [];
@@ -224,7 +294,7 @@ export async function fetchLabels(qids: string[]): Promise<Map<string, EntityLab
     batches.map(async (batch): Promise<LabelPayload> => {
       const url =
         `${WD_API}?action=wbgetentities&format=json&origin=*` +
-        `&ids=${batch.join('|')}&props=labels|descriptions&languages=zh|zh-hans|en`;
+        `&ids=${batch.join('|')}&props=labels|descriptions&languages=${LABEL_LANGS_PARAM}`;
       try {
         return (await fetchJson(url, LABEL_TIMEOUT)) as LabelPayload;
       } catch {
@@ -233,12 +303,21 @@ export async function fetchLabels(qids: string[]): Promise<Map<string, EntityLab
     }),
   );
 
+  const pick = (m?: Record<string, { value: string }>): string | undefined => {
+    if (!m) return undefined;
+    for (const lang of LABEL_LANG_FALLBACK) {
+      if (m[lang]?.value) return m[lang].value;
+    }
+    return Object.values(m)[0]?.value; // 兜底：任一语言
+  };
   for (const data of results) {
     for (const [qid, entity] of Object.entries(data.entities ?? {})) {
       if (qid.startsWith('-')) continue; // API 元数据键（如 -1）
-      const pick = (m?: Record<string, { value: string }>) =>
-        m?.zh?.value ?? m?.['zh-hans']?.value ?? m?.en?.value ?? undefined;
-      out.set(qid, { label: pick(entity.labels), description: pick(entity.descriptions) });
+      out.set(qid, {
+        label: pick(entity.labels),
+        description: pick(entity.descriptions),
+        langCount: Object.keys(entity.labels ?? {}).length,
+      });
     }
   }
   return out;
@@ -284,9 +363,10 @@ export async function queryCollection(qid: string): Promise<LiveCandidate[]> {
   const named: LiveCandidate[] = [];
   for (const c of candidates) {
     const l = labels.get(c.qid);
-    if (!l?.label) continue; // 连英文名都没有的无法展示
+    if (!l?.label) continue; // 连任一语言名都没有的无法展示
     c.name = l.label;
     c.description = l.description ?? '';
+    c.fame = l.langCount ?? 0;
     named.push(c);
   }
   // 按 QID 排序保证候选顺序稳定（SPARQL 返回顺序不定）
@@ -298,7 +378,11 @@ export function candidateDims(candidate: LiveCandidate): Dims {
   return detectKind(candidate.classes, `${candidate.name} ${candidate.description}`).dims;
 }
 
-/** 从候选中按画像加权抽样（确定性：同一画像 + 同一候选集永远同一结果） */
+/**
+ * 从候选中按画像加权抽样（确定性：同一画像 + 同一候选集永远同一结果）。
+ * 权重 = 气质契合度² × 知名度因子：标签语言越多越是大众认知中的"真展品"，
+ * 无名小实体（冷门残件、怪条目）权重被显著压低。
+ */
 export function pickCandidate(
   candidates: LiveCandidate[],
   profile: Profile,
@@ -318,7 +402,9 @@ export function pickCandidate(
       message: '',
       tags: [],
     };
-    return Math.max(1, scoreOf(artifact, profile.dims)) ** 2;
+    const affinity = Math.max(1, scoreOf(artifact, profile.dims)) ** 2;
+    const fame = 1 + Math.log2(1 + c.fame);
+    return affinity * fame;
   });
   const total = weights.reduce((s, w) => s + w, 0);
   let pick = rng() * total;

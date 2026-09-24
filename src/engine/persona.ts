@@ -103,63 +103,193 @@ const NEUTRAL_KIND: ArtifactKind = {
 
 /** Wikidata P31 类别 Q-ID → 大类（尽力匹配，miss 走关键词/中性） */
 const CLASS_QIDS: Record<string, keyof typeof KINDS> = {
+  // 书画类（绘画/素描/版画/书法）
   Q3305213: 'painting', // painting
   Q93184: 'painting', // drawing
   Q178706: 'painting', // calligraphy（书法归入书画）
+  Q11060274: 'painting', // print
+  Q18219090: 'painting', // woodcut print
+  Q18761202: 'painting', // watercolor painting
+  Q1348059: 'painting', // panel（板画）
+  // 雕塑类
   Q838948: 'sculpture', // sculptural work
   Q1208795: 'sculpture', // sculpture
   Q853614: 'sculpture', // statue
+  Q179700: 'sculpture', // statue
+  Q245117: 'sculpture', // relief
+  Q4364339: 'sculpture', // plaque
+  Q241045: 'sculpture', // bust
+  Q29401129: 'sculpture', // head of a statue
+  Q29527347: 'sculpture', // figure
+  Q1066288: 'sculpture', // figurine
+  Q193893: 'sculpture', // capital（柱头）
+  Q391414: 'sculpture', // architectural element
+  Q82383: 'sculpture', // base
+  // 兵器/甲胄
   Q12766: 'weapon', // sword
   Q728: 'weapon', // weapon
   Q1287644: 'weapon', // blade
+  Q173603: 'weapon', // helmet
+  Q11886611: 'weapon', // armor
+  Q39397: 'weapon', // axe
+  Q32489: 'weapon', // knife
+  // 陶瓷/容器
   Q41487: 'ceramic', // ceramic art
   Q745845: 'ceramic', // ceramic
   Q735599: 'ceramic', // porcelain
+  Q153988: 'ceramic', // bowl
+  Q191851: 'ceramic', // vase
+  Q57216: 'ceramic', // plate
+  Q97659338: 'ceramic', // dish
+  Q96952903: 'ceramic', // vessel
+  Q1207302: 'ceramic', // jar
+  Q12244686: 'ceramic', // pot
+  Q2413314: 'ceramic', // jug
+  Q132397: 'ceramic', // pitcher
+  Q404785: 'ceramic', // ewer
+  Q178401: 'ceramic', // amphora
+  Q668349: 'ceramic', // kylix
+  Q579418: 'ceramic', // lekythos
+  Q831869: 'ceramic', // oenochoe
+  Q477146: 'ceramic', // amphoriskos
+  Q717954: 'ceramic', // aryballos
+  Q1136095: 'ceramic', // skyphos
+  Q732286: 'ceramic', // askos
+  Q673338: 'ceramic', // alabastron
+  Q81727: 'ceramic', // cup
+  Q16180001: 'ceramic', // tumbler
+  Q386215: 'ceramic', // mug
+  Q833823: 'ceramic', // beaker
+  Q18451251: 'ceramic', // goblet
+  Q1531435: 'ceramic', // wine glass
+  Q3446398: 'ceramic', // tankard
+  Q80228: 'ceramic', // bottle
+  Q18696213: 'ceramic', // flask
+  Q245005: 'ceramic', // teapot
+  Q1422576: 'ceramic', // saucer
+  Q3391771: 'ceramic', // platter
+  Q2990690: 'ceramic', // compote bowl
+  Q5771190: 'ceramic', // salt cellar
+  Q2356786: 'ceramic', // sugar bowl
+  Q2383211: 'ceramic', // wash basin
+  Q613972: 'ceramic', // tray
+  Q468402: 'ceramic', // tile
+  Q960844: 'ceramic', // funerary urn
+  Q5174015: 'ceramic', // cosmetic container
+  Q1350279: 'ceramic', // pyxis
+  // 青铜器
   Q229376: 'bronze', // bronze
   Q1074699: 'bronze', // bronze artifact
+  // 玉器
   Q44512: 'jade', // jade
   Q2001600: 'jade', // jade artifact
+  // 金银/珠宝首饰
   Q1798613: 'jewellery', // jewellery
   Q17274532: 'jewellery', // gold object
+  Q2142903: 'jewellery', // jewelry
+  Q168456: 'jewellery', // earring
+  Q189299: 'jewellery', // necklace
+  Q201664: 'jewellery', // bracelet
+  Q2111434: 'jewellery', // pendant
+  Q499916: 'jewellery', // brooch
+  Q324926: 'jewellery', // fibula
+  Q46847: 'jewellery', // ring
+  Q112091664: 'jewellery', // finger ring
+  Q1053956: 'jewellery', // bead
+  Q1665351: 'jewellery', // intaglio
+  Q28512: 'jewellery', // cameo
+  Q115488: 'jewellery', // medallion
+  Q2442735: 'jewellery', // scarab
+  Q131557: 'jewellery', // amulet
+  // 织绣服饰
   Q28823: 'textile', // textile
   Q11460: 'textile', // costume
+  Q200539: 'textile', // dress
+  Q2144456: 'textile', // evening dress
+  Q184296: 'textile', // tapestry
+  Q163446: 'textile', // carpet
+  Q22075301: 'textile', // textile artwork
+  // 乐器
   Q34379: 'instrument', // musical instrument
-  Q33506: 'religious', // museum（防呆，一般到不了）
+  // 宗教造像/丧葬
   Q183032: 'religious', // religious art
   Q573: 'religious', // idol
   Q8261: 'religious', // religious figure
+  Q726826: 'religious', // ushabti
+  Q184418: 'religious', // coffin
+  Q2083647: 'religious', // funerary art
+  Q1536488: 'religious', // funerary cone
+  // 文献手稿
   Q17536877: 'manuscript', // manuscript
   Q11690269: 'manuscript', // document
   Q820655: 'manuscript', // book
+  Q48498: 'manuscript', // illuminated manuscript
+  Q16744570: 'manuscript', // tablet
+  Q12043767: 'manuscript', // papyrus
+  Q1363377: 'manuscript', // folio
+  // 钱币
   Q39585: 'coin', // coin
+  Q41207: 'coin', // coin
+  Q131647: 'coin', // medal
+  // 自然标本
   Q2385137: 'specimen', // fossil
   Q1868855: 'specimen', // natural specimen
+  // 古文字/铭刻
   Q421909: 'inscription', // inscription
   Q417504: 'inscription', // epigraphy
+  Q1640824: 'inscription', // inscription
+  Q178743: 'inscription', // stele
+  Q834459: 'inscription', // ostracon
+  Q162919: 'inscription', // seal
+  Q1123756: 'inscription', // cylinder seal
+  // 家具
   Q12280: 'furniture', // furniture
   Q11019: 'furniture', // chair
   Q11023: 'furniture', // table
+  Q14745: 'furniture', // furniture
+  Q14748: 'furniture', // table
+  Q63495428: 'furniture', // side chair
+  Q11285759: 'furniture', // armchair
+  Q366134: 'furniture', // chest
+  Q188075: 'furniture', // box
+  // 玻璃器
   Q5208785: 'glass', // glass art
   Q13069: 'glass', // glass
+  Q11469: 'glass', // glass
+  Q1922981: 'glass', // glassware
+  Q5567091: 'glass', // glass artwork
+  Q21061279: 'glass', // stained-glass window
+  // 工艺杂项（钟表/镜/灯/镶嵌）
+  Q376: 'craft', // clock
+  Q35197: 'craft', // mirror
+  Q1138737: 'craft', // lamp
+  Q821952: 'craft', // oil lamp
+  Q151771: 'craft', // candlestick
+  Q548275: 'craft', // candelabra
+  Q95975776: 'craft', // inlay
+  Q133067: 'craft', // mosaic
+  Q161524: 'craft', // mask
+  Q1320546: 'craft', // weight
+  Q3449901: 'craft', // game piece
 };
 
 /** label/description 关键词 → 大类（比 Q-ID 更鲁棒的第二通道） */
 const KIND_KEYWORDS: Array<[keyof typeof KINDS, string[]]> = [
-  ['painting', ['painting', '油画', '水墨', '山水画', '绘画', '书法', 'calligraphy', 'drawing', '画卷', '画轴', '图轴', '图卷', '画作', '字画', '手卷', '立轴', '册页']],
-  ['sculpture', ['sculpture', '雕塑', '石雕', '木雕', '造像碑', 'relief', '浮雕']],
-  ['weapon', ['sword', 'weapon', 'swordguard', '刀', '剑', '矛', '戈', '戟', '兵器', '甲胄', 'armor']],
-  ['ceramic', ['ceramic', 'porcelain', 'pottery', '陶瓷', '瓷器', '陶器', '青花', '彩瓷', '唐三彩']],
+  ['painting', ['painting', '油画', '水墨', '山水画', '绘画', '书法', 'calligraphy', 'drawing', '画卷', '画轴', '图轴', '图卷', '画作', '字画', '手卷', '立轴', '册页', 'print', 'woodcut', 'watercolor', 'lithograph']],
+  ['sculpture', ['sculpture', '雕塑', '石雕', '木雕', '造像碑', 'relief', '浮雕', 'statue', 'figurine', 'bust', 'stele of']],
+  ['weapon', ['sword', 'weapon', 'swordguard', '刀', '剑', '矛', '戈', '戟', '兵器', '甲胄', 'armor', 'helmet', 'dagger', 'arrowhead']],
+  ['ceramic', ['ceramic', 'porcelain', 'pottery', '陶瓷', '瓷器', '陶器', '青花', '彩瓷', '唐三彩', 'bowl', 'vase', 'jar', 'amphora', 'vessel', 'teapot', 'jug', 'pitcher']],
   ['bronze', ['bronze', '青铜', '鼎', '簋', '尊', '卣', '觥', '爵', '编钟', '銮铃']],
   ['jade', ['jade', '玉器', '玉佩', '玉璧', '玉琮', '玉璜', '翡翠']],
-  ['jewellery', ['jewellery', 'jewelry', 'gold', 'silver', '金银', '首饰', '冠饰', '金器', '银器', 'golden']],
-  ['textile', ['textile', 'costume', 'embroid', '织物', '刺绣', '丝织', '服饰', '龙袍', '缂丝']],
+  ['jewellery', ['jewellery', 'jewelry', 'gold', 'silver', '金银', '首饰', '冠饰', '金器', '银器', 'golden', 'earring', 'necklace', 'bracelet', 'pendant', 'brooch', 'amulet', 'scarab', 'ring']],
+  ['textile', ['textile', 'costume', 'embroid', '织物', '刺绣', '丝织', '服饰', '龙袍', '缂丝', 'tapestry', 'carpet', 'dress']],
   ['instrument', ['instrument', 'music', '乐器', '琴', '瑟', '箜篌', '琵琶', '编磬']],
-  ['religious', ['buddha', 'bodhisattva', 'religious', '佛', '菩萨', '罗汉', '金刚', '造像', '经幢', 'altar', '祭']],
-  ['manuscript', ['manuscript', 'document', 'scroll', '手稿', '文书', '卷轴', '写本', '抄本', '善本', 'map']],
-  ['coin', ['coin', '钱币', '铜钱', '金币', '银元', '纸币', 'banknote']],
+  ['religious', ['buddha', 'bodhisattva', 'religious', '佛', '菩萨', '罗汉', '金刚', '造像', '经幢', 'altar', '祭', 'ushabti', 'coffin', 'sarcophagus', 'funerary']],
+  ['manuscript', ['manuscript', 'document', 'scroll', '手稿', '文书', '卷轴', '写本', '抄本', '善本', 'map', 'papyrus', 'tablet', 'codex']],
+  ['coin', ['coin', '钱币', '铜钱', '金币', '银元', '纸币', 'banknote', 'medal']],
   ['specimen', ['fossil', 'specimen', 'skeleton', '化石', '标本', '骨骼', 'dinosaur']],
-  ['inscription', ['inscription', 'oracle', '甲骨', '铭文', '碑文', '石鼓', 'epigraph', 'bamboo slips', '简牍']],
-  ['furniture', ['furniture', 'chair', 'table', 'cabinet', '家具', '屏风', '桌', '椅', '案', '柜']],
+  ['inscription', ['inscription', 'oracle', '甲骨', '铭文', '碑文', '石鼓', 'epigraph', 'bamboo slips', '简牍', 'ostracon', 'seal']],
+  ['furniture', ['furniture', 'chair', 'table', 'cabinet', '家具', '屏风', '桌', '椅', '案', '柜', 'chest']],
   ['glass', ['glass', '玻璃', '琉璃']],
 ];
 

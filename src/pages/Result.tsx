@@ -19,6 +19,7 @@ export default function Result() {
   const pendingCustom = useFateStore((s) => s.pendingCustom);
   const collection = useFateStore((s) => s.collection);
   const addRecord = useFateStore((s) => s.addRecord);
+  const updateRecord = useFateStore((s) => s.updateRecord);
 
   const builtIn = museumKey in MUSEUM_BY_ID ? MUSEUM_BY_ID[museumKey] : null;
   const customName =
@@ -38,15 +39,17 @@ export default function Result() {
 
   useEffect(() => {
     if (!profile || builtIn || !customName) return;
-    // 初遇已盖章 → 用快照重现当时的相遇，不再查询
-    if (existingSnapshot) {
+    // 初遇已盖章且是真实馆藏 → 用快照重现当时的相遇，不再查询。
+    // 旧的全球回退记录（live=false，如早期误配的文物）则重新推演，
+    // 查到真实馆藏时升级覆盖记录。
+    if (existingSnapshot?.live) {
       setLiveResult({
         match: {
           artifact: existingSnapshot,
           affinity: existingRecord.affinity,
           divined: true,
         },
-        live: existingSnapshot.live === true,
+        live: true,
         museumQid: null,
       });
       setLivePhase('done');
@@ -101,7 +104,7 @@ export default function Result() {
   useEffect(() => {
     if (awakening || !match || !museumName || stamped.current) return;
     stamped.current = true;
-    addRecord({
+    const record = {
       museumKey,
       museumName,
       artifactId: match.artifact.id,
@@ -109,8 +112,13 @@ export default function Result() {
       timestamp: Date.now(),
       divined: match.divined,
       artifactSnapshot: match.artifact,
-    });
-  }, [awakening, match, museumName, museumKey, addRecord]);
+    };
+    // 旧记录是全球回退（非该馆藏品）且本次查到真实馆藏 → 升级覆盖
+    const upgrade =
+      existingRecord && !existingRecord.artifactSnapshot?.live && match.artifact.live;
+    if (upgrade) updateRecord(record);
+    else addRecord(record);
+  }, [awakening, match, museumName, museumKey, addRecord, updateRecord, existingRecord]);
 
   if (!profile) return <Navigate to="/quiz" replace />;
   if (!match) {
@@ -171,9 +179,14 @@ export default function Result() {
             </span>
           </div>
           {divined && !artifact.live && (
-            <p className="mt-2 text-center text-[10px] leading-4 text-inkSoft/70">
-              该馆馆藏暂未收录 · 已为你推演世界文物之缘
-            </p>
+            <div className="mt-3 w-full rounded-xl border border-dashed border-cinnabar/60 bg-cinnabar/5 px-4 py-3 text-center">
+              <p className="text-xs font-medium text-cinnabar">
+                「{museumName}」的馆藏暂未被 Wikidata 收录
+              </p>
+              <p className="mt-1 text-[10px] leading-4 text-inkSoft">
+                下方文物并非该馆藏品，而是为你推演的世界文物之缘 · 建议换一座馆试试
+              </p>
+            </div>
           )}
         </div>
 

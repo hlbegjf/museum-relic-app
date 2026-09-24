@@ -16,6 +16,8 @@ interface FateState {
   setPendingCustom: (custom: PendingCustom | null) => void;
   /** 盖章：同一馆只保留「初遇」的记录 */
   addRecord: (record: CollectionRecord) => void;
+  /** 覆盖某馆的记录：仅用于把旧的全球回退结果升级为真实馆藏 */
+  updateRecord: (record: CollectionRecord) => void;
   resetAll: () => void;
 }
 
@@ -34,6 +36,12 @@ export const useFateStore = create<FateState>()(
           }
           return { collection: [record, ...state.collection] };
         }),
+      updateRecord: (record) =>
+        set((state) => ({
+          collection: state.collection.map((r) =>
+            r.museumKey === record.museumKey ? record : r,
+          ),
+        })),
       resetAll: () => set({ profile: null, collection: [], pendingCustom: null }),
     }),
     {
