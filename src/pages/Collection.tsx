@@ -177,6 +177,16 @@ export default function Collection() {
             </SealButton>
           )}
         </div>
+
+        <p className="mt-10 text-center text-[10px] leading-5 text-inkSoft/70">
+          文物图片来自 Wikimedia Commons ·{' '}
+          <button
+            onClick={() => navigate('/about')}
+            className="underline decoration-inkSoft/40 underline-offset-2"
+          >
+            版权与来源说明
+          </button>
+        </p>
       </main>
     </div>
   );

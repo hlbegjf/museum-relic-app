@@ -81,6 +81,13 @@ export default function Home() {
 
         <p className="mt-auto pt-12 text-center text-[10px] leading-5 text-inkSoft/70">
           本应用为文创娱乐作品 · 文案为艺术创作，文物信息以各馆官方为准
+          <br />
+          <button
+            onClick={() => navigate('/about')}
+            className="underline decoration-inkSoft/40 underline-offset-2"
+          >
+            版权与来源说明
+          </button>
         </p>
       </main>
     </div>

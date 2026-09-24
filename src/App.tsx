@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { HashRouter, Navigate, Route, Routes } from 'react-router-dom';
+import About from '@/pages/About';
 import Collection from '@/pages/Collection';
 import Home from '@/pages/Home';
 import MuseumSelect from '@/pages/MuseumSelect';
@@ -37,6 +38,7 @@ export default function App() {
           }
         />
         <Route path="/collection" element={<Collection />} />
+        <Route path="/about" element={<About />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </HashRouter>

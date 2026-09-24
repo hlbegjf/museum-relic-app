@@ -6,6 +6,7 @@ import ArtifactImage from '@/components/ArtifactImage';
 import ArtifactSeal from '@/components/ArtifactSeal';
 import SealButton from '@/components/SealButton';
 import { generateShareCard } from '@/components/ShareCard';
+import { artifactSourceUrl } from '@/data/artifacts/images';
 import { MUSEUM_BY_ID } from '@/data/museums';
 import { matchCurated } from '@/engine/engine';
 import { matchLive, type LiveMatch } from '@/engine/wikidata';
@@ -211,7 +212,18 @@ export default function Result() {
             <ArtifactImage artifact={artifact} className="h-64 w-full" />
           </div>
           <p className="mt-1.5 text-center text-[10px] text-inkSoft/60">
-            图片来源 · Wikimedia Commons
+            {artifactSourceUrl(artifact) ? (
+              <a
+                href={artifactSourceUrl(artifact) ?? undefined}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline decoration-inkSoft/40 underline-offset-2 hover:text-inkSoft"
+              >
+                图源 · Wikimedia Commons（含作者与授权信息）↗
+              </a>
+            ) : (
+              '图片来源 · Wikimedia Commons'
+            )}
           </p>
         </div>
 
@@ -284,6 +296,16 @@ export default function Result() {
             </SealButton>
           </div>
         </div>
+
+        <p className="mt-8 text-center text-[10px] leading-5 text-inkSoft/70">
+          文物图片来自 Wikimedia Commons ·{' '}
+          <button
+            onClick={() => navigate('/about')}
+            className="underline decoration-inkSoft/40 underline-offset-2"
+          >
+            版权与来源说明
+          </button>
+        </p>
       </main>
     </div>
   );

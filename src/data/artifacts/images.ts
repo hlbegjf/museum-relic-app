@@ -108,10 +108,21 @@ export function commonsUrl(filename: string, width = 800): string {
   return `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(filename)}?width=${width}`;
 }
 
+/** Commons 文件描述页（含作者与许可信息，用作图源署名链接） */
+export function commonsFileUrl(filename: string): string {
+  return `https://commons.wikimedia.org/wiki/File:${encodeURIComponent(filename)}`;
+}
+
 /** 文物实物图 URL；缺图返回 null（调用方回退为印章） */
 export function artifactImage(artifact: Artifact, width = 800): string | null {
   // Wikidata 实时推演的文物自带 Commons 文件名
   if (artifact.imageUrl) return commonsUrl(artifact.imageUrl, width);
   const filename = ARTIFACT_IMAGES[artifact.id];
   return filename ? commonsUrl(filename, width) : null;
+}
+
+/** 文物图源（Commons 文件页）链接；缺图返回 null */
+export function artifactSourceUrl(artifact: Artifact): string | null {
+  const filename = artifact.imageUrl || ARTIFACT_IMAGES[artifact.id];
+  return filename ? commonsFileUrl(filename) : null;
 }
